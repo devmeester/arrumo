@@ -1,0 +1,58 @@
+# Production: Caddy (HTTPS) -> app (Spring Boot) -> db (PostgreSQL).
+# Only Caddy is exposed to the internet. The database sits on an internal network with no way out.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: arrumo
+      POSTGRES_USER: arrumo
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is missing from .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arrumo -d arrumo"]
+      interval: 10s
+      retries: 6
+    logging: &logs
+      options: { max-size: "10m", max-file: "5" }
+
+  app:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/arrumo
+      DB_USER: arrumo
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [internal, web]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging: *logs
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN is missing from .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [web]
+    depends_on: [app]
+    logging: *logs
+
+networks:
+  internal: { internal: true }
+  web: {}
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

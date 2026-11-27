@@ -1,0 +1,32 @@
+# Local test: app + PostgreSQL on this machine, no HTTPS (http://localhost:8080).
+# Uses the same .env as production. Start with:
+#   docker compose -f docker-compose.local.yml up -d --build
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: arrumo
+      POSTGRES_USER: arrumo
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is missing from .env}
+    volumes:
+      - db-local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arrumo -d arrumo"]
+      interval: 5s
+      retries: 12
+
+  app:
+    build: ../backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/arrumo
+      DB_USER: arrumo
+      APP_SECURE_COOKIE: "false"     # plain HTTP on localhost
+    ports: ["8080:8080"]
+    depends_on:
+      db: { condition: service_healthy }
+
+volumes:
+  db-local:

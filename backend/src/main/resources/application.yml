@@ -1,0 +1,73 @@
+# Production values. Secrets ALWAYS come from environment variables (the .env file on the server).
+spring:
+  application:
+    name: arrumo
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://db:5432/arrumo}
+    username: ${DB_USER:arrumo}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none   # the schema belongs to Flyway; the app never changes it by itself
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    locations: classpath:db/migration
+  threads:
+    virtual:
+      enabled: true
+  mvc:
+    async:
+      request-timeout: 1800000   # real-time (SSE) connections last up to 30 min; the browser reconnects
+
+server:
+  port: ${PORT:8080}                 # Railway and similar platforms pass the port in PORT
+  forward-headers-strategy: native   # real client IP from Caddy
+  error:
+    include-stacktrace: never
+    include-message: never
+  servlet:
+    session:
+      timeout: 10h        # maximum idle time (one shift)
+      cookie:
+        name: arrumo_session
+        http-only: true
+        secure: ${APP_SECURE_COOKIE:true}
+        same-site: strict
+  tomcat:
+    max-http-form-post-size: 2MB
+    max-swallow-size: 2MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  encryption-key: ${APP_ENCRYPTION_KEY}
+  totp-issuer: ${APP_TOTP_ISSUER:Arrumo}
+  mfa-required: ${APP_MFA_REQUIRED:ADMIN,MANAGER}
+  admin-username: ${APP_ADMIN_USERNAME:}
+  admin-password: ${APP_ADMIN_PASSWORD:}
+  max-attempts: 5
+  lockout: 15m
+  max-session-duration: 12h
+  secure-cookie: ${APP_SECURE_COOKIE:true}
+  packing:
+    # Power Automate flow URLs (trigger "When a Teams webhook request is received").
+    # They can also be set in the app (Embalamentos > Configurar envios); the app value wins.
+    webhook-daily: ${APP_PACKING_WEBHOOK_DAILY:}
+    webhook-finished: ${APP_PACKING_WEBHOOK_FINISHED:}
+    cron: ${APP_PACKING_CRON:0 0 17 * * MON-FRI}   # Lisbon time
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
