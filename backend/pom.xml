@@ -9,7 +9,7 @@
         <artifactId>spring-boot-starter-parent</artifactId>
         <!-- Before going to production, move to the latest 4.x:
              mvn versions:display-parent-updates -->
-        <version>4.0.0</version>
+        <version>4.2.0</version>
         <relativePath/>
     </parent>
 
