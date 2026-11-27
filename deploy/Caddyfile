@@ -1,0 +1,19 @@
+# Automatic HTTPS certificate (Let's Encrypt) for the domain in .env.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Recommended if the plant has a fixed IP: only the plant (and the VPN) can reach the app.
+	# Replace with the real IPs and uncomment the 2 lines below.
+	# @outside not remote_ip 203.0.113.10 198.51.100.0/24
+	# respond @outside "Acesso só a partir da rede da empresa." 403
+
+	reverse_proxy app:8080
+}

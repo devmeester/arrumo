@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Arrumo Câmara C5</title>
+<link rel="stylesheet" href="/app.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+
+<!-- Step-by-step login -->
+<main id="login" class="login" hidden>
+  <div class="login-box">
+    <p class="logo">Arrumo</p>
+    <p class="muted">Câmara C5 de congelados</p>
+
+    <form id="f-login" class="step" autocomplete="on">
+      <label for="l-user">Utilizador</label>
+      <input id="l-user" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      <label for="l-pass">Palavra-passe</label>
+      <input id="l-pass" name="password" type="password" autocomplete="current-password" required>
+      <button class="btn pri full" type="submit">Entrar</button>
+    </form>
+
+    <form id="f-mfa" class="step" hidden>
+      <h1>Código de verificação</h1>
+      <p>Abre a app de autenticação no telemóvel e escreve o código de 6 dígitos da Arrumo.</p>
+      <label for="m-code">Código</label>
+      <input id="m-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+      <label class="check"><input type="checkbox" id="m-remember"> Não pedir o código neste computador durante 30 dias</label>
+      <p class="note">Só num computador ou terminal da fábrica. A palavra-passe continua a ser pedida.</p>
+      <button class="btn pri full" type="submit">Confirmar</button>
+    </form>
+
+    <form id="f-pass" class="step" hidden>
+      <h1>Escolhe uma palavra-passe nova</h1>
+      <p>A que recebeste era temporária. Usa pelo menos 12 caracteres; uma frase curta é mais fácil de lembrar e mais segura.</p>
+      <label for="p-new">Palavra-passe nova</label>
+      <input id="p-new" type="password" autocomplete="new-password" minlength="12" maxlength="64" required>
+      <label for="p-conf">Repetir</label>
+      <input id="p-conf" type="password" autocomplete="new-password" minlength="12" maxlength="64" required>
+      <button class="btn pri full" type="submit">Guardar e continuar</button>
+    </form>
+
+    <form id="f-setup-mfa" class="step" hidden>
+      <h1>Ativar verificação em dois passos</h1>
+      <p>Na app de autenticação (Microsoft Authenticator, Google Authenticator, Aegis…) adiciona uma conta lendo este código QR.</p>
+      <div id="qr" class="qr"></div>
+      <p class="muted">Sem câmara? Escreve esta chave na app: <code id="qr-key"></code></p>
+      <label for="c-code">Código que aparece na app</label>
+      <input id="c-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required>
+      <label class="check"><input type="checkbox" id="c-remember"> Não pedir o código neste computador durante 30 dias</label>
+      <p class="note">Só num computador ou terminal da fábrica. A palavra-passe continua a ser pedida.</p>
+      <button class="btn pri full" type="submit">Ativar</button>
+    </form>
+
+    <p id="login-error" class="error" role="alert"></p>
+  </div>
+  <p class="footer footer-login">Arrumo v1.0 &nbsp;|&nbsp; Desenvolvido por Kainã Bermudes da Silva, 2026 &nbsp;|&nbsp; <a href="mailto:bermudes13@outlook.com">bermudes13@outlook.com</a></p>
+</main>
+
+<!-- Application -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand"><b>Arrumo</b><span>Câmara C5</span></div>
+    <nav class="nav" id="nav" aria-label="Secções">
+      <button data-view="map" aria-current="page">Mapa</button>
+      <button data-view="terminal" hidden>Terminal</button>
+      <button data-view="lots" data-role="VIEWER">Lotes</button>
+      <button data-view="products" data-role="VIEWER">Produtos</button>
+      <button data-view="packing" data-role="ADMIN">Embalamentos</button>
+      <button data-view="history" data-role="VIEWER">Histórico</button>
+      <button data-view="users" data-role="ADMIN">Utilizadores</button>
+    </nav>
+    <div class="account">
+      <span id="live" class="live" title="Atualização em tempo real"></span>
+      <button class="btn" id="b-account" aria-haspopup="true" aria-expanded="false"></button>
+      <div class="menu" id="account-menu" hidden>
+        <p id="account-info" class="muted"></p>
+        <button data-action="enable-mfa">Ativar verificação em dois passos</button>
+        <button data-action="password">Mudar palavra-passe</button>
+        <button data-action="logout">Terminar sessão</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAP -->
+  <section id="v-map" class="view">
+    <div class="toolbar">
+      <nav class="tabs" id="zones" role="tablist" aria-label="Zonas da câmara"></nav>
+      <div class="search"><label class="sr" for="q">Pesquisar lote, código ERP, produto, posição ou nota</label>
+        <input id="q" type="search" placeholder="Lote, produto, posição ou nota" autocomplete="off"></div>
+      <button class="btn b-panel" id="b-panel" aria-controls="side" aria-expanded="false">Painel</button>
+    </div>
+    <div class="wrap">
+      <div class="mapbox"><div id="modebar"></div><div id="map"></div></div>
+      <aside class="side" id="side" aria-live="polite"></aside>
+    </div>
+  </section>
+
+  <!-- TERMINAL (handheld) -->
+  <section id="v-terminal" class="view" hidden><div id="terminal" class="terminal"></div></section>
+
+  <!-- LOTS -->
+  <section id="v-lots" class="view" hidden>
+    <div class="page">
+      <div class="page-head"><h1>Lotes</h1>
+        <div class="acts"><button class="btn" id="b-import" data-role="MANAGER">Importar stock</button>
+          <button class="btn pri" id="b-new-lot" data-role="MANAGER">Novo lote</button></div></div>
+      <div id="import-panel" class="panel" hidden></div>
+      <form id="f-lot-filter" class="filters">
+        <label class="sr" for="lot-q">Pesquisar</label><input id="lot-q" type="search" placeholder="Lote, código ERP, produto ou observação">
+        <label class="sr" for="lot-status">Estado</label>
+        <select id="lot-status"><option value="IN_STOCK">Na câmara</option><option value="">Todos</option><option value="SHIPPED">Já saíram</option><option value="NO_DATA">Sem dados (laranja)</option></select>
+      </form>
+      <div class="split"><div class="scroll"><table class="table stack" id="t-lots"></table></div><div id="lot-detail" class="panel"></div></div>
+    </div>
+  </section>
+
+  <!-- PRODUCTS -->
+  <section id="v-products" class="view" hidden>
+    <div class="page">
+      <div class="page-head"><h1>Produtos</h1><div class="acts"><button class="btn pri" id="b-new-product" data-role="MANAGER">Novo produto</button></div></div>
+      <div class="split"><div class="scroll"><table class="table stack" id="t-products"></table></div><div id="product-detail" class="panel"></div></div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="v-history" class="view" hidden>
+    <div class="page">
+      <div class="page-head"><h1>Histórico</h1>
+        <div class="acts" role="tablist"><button class="btn" data-hist="movements" aria-pressed="true">Movimentos</button>
+          <button class="btn" data-hist="audit" data-role="ADMIN" aria-pressed="false">Acessos e gestão</button></div></div>
+      <div class="filters"><label class="sr" for="hq">Filtrar</label><input id="hq" type="search" placeholder="Filtrar por lote, posição ou pessoa"></div>
+      <div class="scroll"><table class="table stack" id="t-history"></table></div>
+    </div>
+  </section>
+
+  <!-- PACKING (admin only) -->
+  <section id="v-packing" class="view" hidden>
+    <div class="page wide">
+      <div class="page-head"><h1>Embalamentos</h1>
+        <div class="acts"><button class="btn" id="b-pk-send">Enviar lista agora</button><button class="btn" id="b-pk-config">Configurar envios</button><button class="btn" id="b-pk-column">Nova coluna</button></div></div>
+      <p id="packing-status" class="packing-status"></p>
+      <div id="board" class="board"></div>
+      <datalist id="dl-products"></datalist>
+    </div>
+  </section>
+
+  <!-- USERS -->
+  <section id="v-users" class="view" hidden>
+    <div class="page">
+      <div class="page-head"><h1>Utilizadores</h1><div class="acts"><button class="btn pri" id="b-new-user">Novo utilizador</button></div></div>
+      <div class="split"><div class="scroll"><table class="table stack" id="t-users"></table></div><div id="user-detail" class="panel"></div></div>
+    </div>
+  </section>
+</div>
+
+<footer class="footer" id="footer" hidden>Arrumo v1.0 &nbsp;|&nbsp; Desenvolvido por Kainã Bermudes da Silva, 2026 &nbsp;|&nbsp; <a href="mailto:bermudes13@outlook.com">bermudes13@outlook.com</a></footer>
+
+<div class="dialog" id="dialog" hidden><div class="dialog-box" role="dialog" aria-modal="true" aria-labelledby="dlg-t"></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script src="/vendor/qrcode.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

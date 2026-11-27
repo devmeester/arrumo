@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Build and test
+        run: mvn -B verify
+
+  # Runs only on a push to main, and only if the build and tests passed.
+  # Copies the code to the Lightsail server and rebuilds the containers there.
+  # deploy/.env and deploy/.backup.env stay on the server and are never touched.
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: deploy-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        env:
+          SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          HOST: ${{ secrets.LIGHTSAIL_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts
+
+      - name: Copy code to server
+        env:
+          HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          USER: ${{ secrets.LIGHTSAIL_USER }}
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_deploy" \
+            --rsync-path="sudo rsync" \
+            --exclude '.git/' \
+            --exclude 'deploy/.env' \
+            --exclude 'deploy/.backup.env' \
+            --exclude 'backend/target/' \
+            ./ "$USER@$HOST:/opt/arrumo/"
+
+      - name: Rebuild and restart
+        env:
+          HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          USER: ${{ secrets.LIGHTSAIL_USER }}
+        run: |
+          ssh -i ~/.ssh/id_deploy "$USER@$HOST" '
+            set -e
+            cd /opt/arrumo/deploy
+            sudo docker compose up -d --build
+            sudo docker image prune -f
+            sudo docker compose ps
+          '
